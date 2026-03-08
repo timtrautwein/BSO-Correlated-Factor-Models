@@ -326,13 +326,29 @@ initialize.scout.nest.bees <- function(item_names,
     stringsAsFactors = FALSE
   )
   
+  # Remove combinations where n_items_sample is too small for the requested n_factors. 
+  # A stable EFA needs at least 2× factors as items (absolute minimum); 
+  # n_factors >= n_items is mathematically impossible.
+  valid_mask <- all_combinations$n_items_sample >= pmax(2 * all_combinations$n_factors, 5)
+  n_removed  <- sum(!valid_mask)
+  all_combinations <- all_combinations[valid_mask, , drop = FALSE]
+  rownames(all_combinations) <- NULL
+  
+  if (nrow(all_combinations) == 0) {
+    stop("No valid EFA combinations: all n_factors/n_items_sample pairs are infeasible. ",
+         "Increase the number of items or reduce max_nest_fac.")
+  }
+  
   # Calculate how many bees we need for basic coverage
   n_basic_combinations <- nrow(all_combinations)
   
   if (verbose) {
     cat("Scout-Nest-Bees initialization:\n")
-    cat("Total possible combinations:", n_basic_combinations, "\n")
-    cat("Requested nest site scout bees:", nest_site_bees, "\n")
+    if (n_removed > 0) {
+      cat("  Removed", n_removed, "infeasible factor/item-sample combinations from grid\n")
+    }
+    cat("  Valid combinations:", n_basic_combinations, "\n")
+    cat("  Requested nest site scout bees:", nest_site_bees, "\n")
   }
   
   # Initialize solutions list and failed attempts tracker
